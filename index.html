@@ -144,7 +144,7 @@
             if (this.forcedLeft) {
               distanceList.push({
                 index: 1,
-                distance: this.forcedLeft
+                distance: Number(this.forcedLeft)
               })
             } else {
               distanceList.push({
@@ -163,7 +163,7 @@
             if (this.forcedRight) {
               distanceList.push({
                 index: Number(this.numberOfLuminaires) + 1,
-                distance: this.fullLength - this.forcedRight
+                distance: Number(this.fullLength - this.forcedRight)
               })
             } else {
               distanceList.push({
