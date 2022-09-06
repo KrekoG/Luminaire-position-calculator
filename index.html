@@ -1,0 +1,199 @@
+<html>
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.10/dist/vue.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx" crossorigin="anonymous">
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <script type="text/javascript">
+      const calculator = {
+        template: `
+          <div class="container px-4 border bg-light">
+            <h1>Luminaire position calculator</h1>
+            <div class="form-floating">
+              <input id="fullLength" type="number" v-model="fullLength" class="form-control" placeholder="Room length">
+              <label for="fullLength">Room length</label>
+            </div>
+            <div class="form-floating">
+              <input id="numberOfLuminaires" type="number" v-model="numberOfLuminaires" class="form-control" placeholder="Number of Luminaires">
+              <label for="numberOfLuminaires">Number of Luminaires</label>
+            </div>
+            <div class="form-floating">
+              <input id="offsetFromLeft" type="number" v-model="offsetFromLeft" default="0" :disabled="forcedLeft > 0" class="form-control" placeholder="Offset from left">
+              <label for="offseoffsetFromLefttLeft">Offset from left</label>
+            </div>
+            <div class="form-floating">
+              <input id="offsetFromRight" type="number" v-model="offsetFromRight" default="0" :disabled="forcedRight > 0" class="form-control" placeholder="Offset from right">
+              <label for="offsetFromRight">Offset from right</label>
+            </div>
+            <div class="form-floating">
+              <input id="forcedLeft" type="number" v-model="forcedLeft" default="0" :disabled="offsetFromLeft > 0" class="form-control" placeholder="Force position of first from left side">
+              <label for="forcedLeft">Force position of first from left side</label>
+            </div>
+            <div class="form-floating">
+              <input id="forcedRight" type="number" v-model="forcedRight" default="0" :disabled="offsetFromRight > 0" class="form-control" placeholder="Force position of first from right side">
+              <label for="forcedRight">Force position of first from right side</label>
+            </div>
+
+            <div v-if="numberOfLuminaires && fullLength">
+            <h2>Luminaire positions</h2>
+              <ul class="list-group text-center">
+                <li class="list-group-item">|--<span v-for="distance in distanceList">{{Math.round((distance.distance + Number.EPSILON) * 100) / 100}}<span v-if="distance.index != Object.keys(distanceList).length">--⮾--</span></span>--|</li>
+              </ul>
+
+              <div v-if="offsetFromLeft < 1 && offsetFromRight < 1 && !forcedLeft && !forcedRight">
+                <h4>Luminaire positions with laser measuring tool</h4>
+                <ul v-for="position in positions" class="list-group">
+                  <li class="list-group-item">{{position.index + 1}}. {{Math.round((position.position + Number.EPSILON) * 100) / 100}}</li>
+                </ul>
+              </div>
+              <div v-else>
+                <div>
+                  <h4>Luminaire positions with laser measuring tool from the left</h4>
+                  <ul v-for="position in positions" class="list-group">
+                    <li class="list-group-item">{{position.index + 1}}. {{Math.round((position.position + Number.EPSILON) * 100) / 100}}</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4>Luminaire positions with laser measuring tool from the right:</h4>
+                  <ul v-for="position in positionsFromTheRight" class="list-group">
+                    <li class="list-group-item">{{position.index + 1}}. {{Math.round((position.position + Number.EPSILON) * 100) / 100}}</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-none">
+              <h5>Debug panel</h5>
+              <div>
+                <label for="effectiveLength">effective length:</label><br>
+                <input name="effectiveLength" type="text" v-model="effectiveLength" default="0">
+              </div>
+              <div>
+                <label for="luminaireShineRadius">Luminaire shine radius:</label><br>
+                <input name="luminaireShineRadius" type="text" v-model="luminaireShineRadius" default="0">
+              </div>
+            </div>
+          </div>
+          `,
+        data() {
+          return {
+            fullLength: null,
+            numberOfLuminaires: null,
+            offsetFromLeft: null,
+            offsetFromRight:null,
+            forcedLeft:null,
+            forcedRight:null,
+          }
+        },
+        computed: {
+          effectiveLength: function () {
+            if (this.forcedLeft && this.forcedRight) {
+                return Math.abs(this.forcedLeft - this.forcedRight)
+            } else if (this.forcedLeft && !this.forcedRight) {
+                return (this.fullLength - this.forcedLeft - this.offsetFromRight)
+            } else if (!this.forcedLeft && this.forcedRight) {
+                return (this.fullLength - this.offsetFromLeft - (this.fullLength - this.forcedRight))
+            } else {
+              return this.fullLength - this.offsetFromLeft - this.offsetFromRight
+            }
+          },
+          luminaireShineRadius: function () {
+            if (this.forcedLeft && this.forcedRight) {
+                return this.effectiveLength / (this.numberOfLuminaires * 2 - 2)
+            }
+
+            if ((this.forcedLeft && !this.forcedRight) || !this.forcedLeft && this.forcedRight) {
+                return this.effectiveLength / (this.numberOfLuminaires * 2 - 1)
+            }
+
+            return this.effectiveLength / (this.numberOfLuminaires * 2)
+          },
+          positions: function () {
+            var positions = []
+
+            for (var i = 0; i < this.numberOfLuminaires; i++) {
+
+              if (this.forcedLeft) {
+                positions.push({
+                  index: i,
+                  position: Number(this.forcedLeft) + Number(this.luminaireShineRadius) * 2 * i
+                })
+              } else {
+                positions.push({
+                  index: i,
+                  position: Number(this.offsetFromLeft) + Number(this.luminaireShineRadius) + Number(this.luminaireShineRadius) * 2 * i
+                })
+              }
+            }
+
+            return positions;
+          },
+          positionsFromTheRight: function() {
+            let positionsFromTheRight = []
+            let i = 0
+
+            this.positions.slice().reverse().forEach(x => positionsFromTheRight.push({index: i++, position: this.fullLength - x.position}))
+
+            return positionsFromTheRight
+          },
+          distanceList: function() {
+            var distanceList = []
+
+            if (this.forcedLeft) {
+              distanceList.push({
+                index: 1,
+                distance: this.forcedLeft
+              })
+            } else {
+              distanceList.push({
+                index: 1,
+                distance: Number(this.luminaireShineRadius) + Number(this.offsetFromLeft)
+              })
+            }
+
+            for (var i = 0; i < this.numberOfLuminaires - 1; i++) {
+              distanceList.push({
+                index: i + 2,
+                distance: Number(this.luminaireShineRadius) * 2
+              })
+            }
+
+            if (this.forcedRight) {
+              distanceList.push({
+                index: Number(this.numberOfLuminaires) + 1,
+                distance: this.fullLength - this.forcedRight
+              })
+            } else {
+              distanceList.push({
+                index: Number(this.numberOfLuminaires) + 1,
+                distance: Number(this.luminaireShineRadius) + Number(this.offsetFromRight)
+              })
+            }
+            return distanceList;
+          }
+        }
+      };
+
+      const app = {
+        template: `
+          <div class="vue-app">
+            <calculator></calculator>
+          </div>
+          `,
+      };
+
+      // register your components
+      Vue.component('calculator', calculator);
+      Vue.component('app', app);
+
+
+      // launch your Vue app
+      new Vue({
+        el: "#app",
+        template: `<app></app>`
+      });
+    </script>
+  </body>
+</html>
